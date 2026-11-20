@@ -1,0 +1,53 @@
+CORREZIONI STEP 1 - generate200b2busers.py
+Review del codice che genera il dataset finto (solo correzioni immediatamente utili)
+=====================================================================================
+
+1. CALO PROPORZIONALE INVECE CHE IN VALORE ASSOLUTO
+   Gruppi interessati: churned con calo (15) e falsi allarmi (20).
+   Problema: ogni mese sottrai un numero fisso (tra 5 e ~10% della base).
+   I clienti piccoli crollano a zero (base 10 -> 0 già al mese -5), quelli
+   grandi calano poco (base 200 -> circa -37%). Nello step 2 misureremo il
+   calo in percentuale, quindi questo squilibrio falserebbe il segnale.
+   Correzione: ogni mese il cliente perde una PERCENTUALE casuale del valore
+   attuale (es. tra 5% e 15%), invece di un numero fisso.
+
+2. AGGIUNGERE RUMORE ANCHE NEI MESI DI CALO
+   Gruppi interessati: churned con calo e falsi allarmi.
+   Problema: i primi 6 mesi oscillano, gli ultimi 6 scendono in modo
+   perfettamente regolare. Un calo troppo "pulito" rende il segnale
+   artificialmente facile da trovare.
+   Correzione: aggiungere una piccola oscillazione casuale anche ai valori
+   calanti, come già fatto nei primi 6 mesi.
+
+3. ID CLIENTE UNIVOCI
+   Problema: np.random.randint(100000, 1000000) può generare due volte lo
+   stesso ID (probabilità ~2% con 200 clienti). In quel caso due clienti
+   diventano uno solo con 24 mesi, falsando i calcoli senza errori visibili.
+   Correzione: usare un contatore che parte da 1 e aumenta a ogni cliente.
+
+4. FISSARE IL SEED
+   Problema: ogni esecuzione produce un dataset diverso. Per un progetto da
+   portfolio chi rilancia il codice deve ottenere gli stessi numeri.
+   Correzione: aggiungere in cima allo script  np.random.seed(42)
+
+5. SALVATAGGIO CSV SENZA INDICE
+   Problema: to_csv scrive anche l'indice; rileggendo il file comparirà una
+   colonna inutile "Unnamed: 0".
+   Correzione: b2busers.to_csv('Data/b2busers.csv', index=False)
+   (la cartella Data/ deve già esistere)
+
+6. CONTROLLO FINALE PRIMA DI SALVARE
+   Problema: manca la verifica che i conti tornino.
+   Correzione: verificare che
+   - i clienti unici siano 200
+   - le righe siano 2.400 (200 x 12)
+   - la quota di clienti con churn sia il 15% (30 su 200)
+
+Piccola correzione di commento (non cambia il risultato):
+   "al max 10% della base" -> il secondo parametro di np.random.normal è la
+   deviazione standard, non un limite massimo. Meglio scrivere
+   "oscillazione tipica del 10% attorno alla base".
+
+PRIORITÀ prima dello step 2: punti 1, 3, 4 (calo proporzionale, ID univoci, seed).
+Finezza consigliata: una funzione unica per generare un cliente, con due
+argomenti (calo sì/no, churn sì/no), così il calo si corregge in un punto solo.
